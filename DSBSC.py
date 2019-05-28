@@ -5,9 +5,6 @@ from scipy.io import wavfile
 import numpy as np
 
 
-# from scipy.fftpack import fftfreq
-
-
 class DSBSC(object):
     __modulated_signals = {}
     __channel = np.zeros(0)
@@ -58,7 +55,7 @@ class DSBSC(object):
         :type fc: float
         """
 
-        # frequencies = fftfreq(len(self.__channel), self.__sample_rate)
+        frequencies = fftfreq(len(self.__channel), self.__sample_rate)
         bandwidth = 100
         filtered = bpf(self.__channel, fc, bandwidth)  # change bandwidth
         demodulated = filtered * np.cos(2 * np.pi * fc * np.arange(bandwidth) / 100)
