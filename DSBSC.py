@@ -1,5 +1,3 @@
-import os
-
 from AudioSignal import *
 from scipy.io import wavfile
 import numpy as np
@@ -30,6 +28,7 @@ class DSBSC(object):
 
         sr = signal.get_sample_rate()
         if self.__sample_rate != sr:
+            import os
             if not os.path.isdir('./temp'):
                 os.mkdir('temp')
 
@@ -43,8 +42,13 @@ class DSBSC(object):
                 wavfile.write("./temp/" + str(fc) + ".wav", self.__sample_rate, np.asarray(modulated, dtype=np.int16))
                 fs, self.__modulated_signals[fc] = wavfile.read("./temp/" + str(fc) + ".wav")
 
+            import shutil
+            shutil.rmtree("./temp")
+
         for signal in self.__modulated_signals:
             self.__channel += signal
+
+        wavfile.write("FDMA.wav", self.__sample_rate, np.asarray(self.__channel, dtype=np.int16))
 
     def demodulate(self, fc):
         """
@@ -55,9 +59,9 @@ class DSBSC(object):
         :type fc: float
         """
 
-        frequencies = fftfreq(len(self.__channel), self.__sample_rate)
-        bandwidth = 100
-        filtered = bpf(self.__channel, fc, bandwidth)  # change bandwidth
-        demodulated = filtered * np.cos(2 * np.pi * fc * np.arange(bandwidth) / 100)
+        ft_channel = fftshift(fft(self.__channel))
+        bandwidth = len(self.__modulated_signals[fc]) / self.__sample_rate
+        filtered = ifftshift(ifft(bpf(ft_channel, fc, bandwidth)))
+        demodulated = fftshift(fft(filtered * np.cos(2 * np.pi * fc * np.arange(bandwidth) / self.__sample_rate)))
 
-        return lpf(demodulated, bandwidth)
+        return ifftshift(ifft(lpf(demodulated, bandwidth)))

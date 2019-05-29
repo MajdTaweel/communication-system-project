@@ -3,14 +3,16 @@ import sys
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QWidget
+from matplotlib.animation import FuncAnimation
 from scipy.io import wavfile
 
 from AudioSignal import AudioSignal
 from main import filter_and_plot
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
-from matplotlib.figure import Figure
+import matplotlib
 
+matplotlib.rc("figure", autolayout=True)
 audio_signals = {}
 
 
@@ -18,19 +20,14 @@ class MainWindow(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
-        main_window.setObjectName("main_window")
-        self.centralwidget = QtWidgets.QWidget(main_window)
-        self.centralwidget.setObjectName("centralwidget")
-        self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
+        self.centralwidget = QWidget(main_window)
+        self.verticalLayoutWidget = QWidget(self.centralwidget)
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.verticalLayout.setObjectName("verticalLayout")
         self.pushButton = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton.setObjectName("pushButton")
         self.pushButton.clicked.connect(self.plot_signal)
         self.progress_bar = QtWidgets.QProgressBar(self.centralwidget)
-        self.horizontal_layout_widget = QtWidgets.QWidget(self.centralwidget)
+        self.horizontal_layout_widget = QWidget(self.centralwidget)
         self.horizontal_layout = QtWidgets.QHBoxLayout(self.horizontal_layout_widget)
         self.horizontal_layout.setContentsMargins(0, 0, 0, 0)
         self.percentage_label = QtWidgets.QLabel(self.horizontal_layout_widget)
@@ -53,7 +50,6 @@ class MainWindow(QWidget):
             sr, data = wavfile.read(file)
             audio_signals[file[:-4]] = AudioSignal(file[:-4], sr, data)
             self.radioButton.append(QtWidgets.QRadioButton(self.verticalLayoutWidget))
-            self.radioButton[i].setObjectName("radioButton")
             self.verticalLayout.addWidget(self.radioButton[i])
             i += 1
             rect.setHeight(rect.height() + 27)
@@ -67,28 +63,21 @@ class MainWindow(QWidget):
             QtCore.QRect(20, y_coordinate - 2, self.horizontal_layout_widget.width(),
                          self.horizontal_layout_widget.height()))
         self.progress_bar.setGeometry(QtCore.QRect(70, y_coordinate + 30, 180, 10))
-        main_window.setMaximumSize(width, height)
-        main_window.setMinimumSize(width, height)
+        main_window.setFixedSize(width, height)
         self.progress_bar.setVisible(False)
         self.timer = QtCore.QBasicTimer()
         self.step = 0
         main_window.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(main_window)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 300, 21))
-        self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
-        self.menuFile.setObjectName("menuFile")
         self.menuInfo = QtWidgets.QMenu(self.menubar)
-        self.menuInfo.setObjectName("menuInfo")
         main_window.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(main_window)
-        self.statusbar.setObjectName("statusbar")
         main_window.setStatusBar(self.statusbar)
         self.actionQuit = QtWidgets.QAction(main_window)
-        self.actionQuit.setObjectName("actionQuit")
         self.actionQuit.triggered.connect(self.quit)
         self.actionAbout = QtWidgets.QAction(main_window)
-        self.actionAbout.setObjectName("actionAbout")
         self.actionAbout.triggered.connect(self.about)
         self.menuFile.addAction(self.actionQuit)
         self.menuInfo.addAction(self.actionAbout)
@@ -96,6 +85,7 @@ class MainWindow(QWidget):
         self.menubar.addAction(self.menuInfo.menuAction())
         self.translate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
+        self.pw = None
 
     def translate_ui(self, main_window):
         _translate = QtCore.QCoreApplication.translate
@@ -130,16 +120,25 @@ class MainWindow(QWidget):
                 if rb.isChecked():
                     key = rb.text()
                     break
-            if key != "":
+            if key != "" and self.percentage_tf.text() != "":
                 self.progress_bar.setVisible(True)
                 self.step += 1
                 self.progress_bar.setValue(self.step)
-                per, bw, animate = filter_and_plot(key, audio_signals[key], int(self.percentage_tf.text()), self.step,
-                                                   self.progress_bar)
+
+                figures, per, bw, animate = filter_and_plot(key, audio_signals[key], int(self.percentage_tf.text()),
+                                                            self.step, self.progress_bar)
+
                 self.step += 100 - self.step
                 self.progress_bar.setValue(self.step)
-                BandwidthDialog(key, per, bw)
+
+                self.pw = PlotWindow(figures, per, bw, animate)
+                self.pw.show()
+
             self.percentage_tf.setEnabled(True)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        super(MainWindow, self).closeEvent(a0)
+        quit()
 
     @staticmethod
     def quit():
@@ -150,39 +149,103 @@ class MainWindow(QWidget):
         AboutDialog()
 
 
-class BandwidthDialog(QtWidgets.QWidget):
-
-    def __init__(self, key, percentage, bandwidth):
+class PlotWindow(QWidget):
+    def __init__(self, figures, percentage, bandwidth, animation, fig_no=0):
         super().__init__()
-        self.title = 'Bandwidth'
-        self.left = 10
-        self.top = 10
-        self.width = 320
-        self.height = 200
-        self.key = key
+        self.setWindowTitle("Plot")
+
+        self.figures = figures
         self.percentage = percentage
         self.bandwidth = bandwidth
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-        QtWidgets.QMessageBox.question(self, self.key, str(self.percentage * 100) + "% Energy Bandwidth: \n\n"
-                                       + str(self.bandwidth) + " kHz\n", QtWidgets.QMessageBox.Ok)
-        self.show()
+        self.animation = animation
+        self.fig_no = fig_no
+
+        if fig_no == 1:
+            self.canvas = Canvas(self, figures[fig_no], True, animation)
+        else:
+            self.canvas = Canvas(self, figures[fig_no])
+        nav = NavigationToolbar2QT(self.canvas, self)
+        nav.move(self.width() / 4, 0)
+        self.canvas.move(0, nav.sizeHint().height())
+
+        self.v_widget = QWidget(self)
+        self.v_box = QtWidgets.QVBoxLayout(self.v_widget)
+
+        self.button_time = QtWidgets.QPushButton(self.v_widget)
+        self.button_time.setText("Original Signal")
+        self.button_time.clicked.connect(self.change_to_original)
+
+        self.button_frequency = QtWidgets.QPushButton(self.v_widget)
+        self.button_frequency.setText("Signal's Energy")
+        self.button_frequency.clicked.connect(self.change_to_energy)
+
+        self.button_filtered = QtWidgets.QPushButton(self.v_widget)
+        self.button_filtered.setText("Filtered Signal")
+        self.button_filtered.clicked.connect(self.change_to_filtered)
+
+        self.label = QtWidgets.QLabel(str(percentage * 100) + "% Energy Bandwidth: " + str(bandwidth) + " kH", self)
+        self.label.move(0, self.height() + nav.sizeHint().height())
+        self.label.setFixedSize(self.width(), self.label.height() + 20)
+        self.label.setAlignment(QtCore.Qt.AlignCenter)
+        self.label.setStyleSheet("QLabel {background-color: white; border-top-style: solid; border-top-width: 1px; "
+                                 "border-top-color: black;}")
+
+        self.v_widget.move(self.width(), 0)
+        self.v_widget.setFixedHeight(self.height() + nav.sizeHint().height())
+
+        self.v_box.addStretch()
+        self.v_box.addWidget(self.button_time)
+        self.v_box.addStretch()
+        self.v_box.addWidget(self.button_frequency)
+        self.v_box.addStretch()
+        self.v_box.addWidget(self.button_filtered)
+        self.v_box.addStretch()
+
+        self.setFixedSize(self.width() + self.v_widget.width(),
+                          self.height() + nav.sizeHint().height() + self.label.height())
+
+    def change_to_original(self):
+        if self.fig_no != 0:
+            pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=0)
+            self.close()
+            pw.show()
+
+    def change_to_energy(self):
+        if self.fig_no != 1:
+            pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=1)
+            self.close()
+            pw.show()
+
+    def change_to_filtered(self):
+        if self.fig_no != 2:
+            pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=2)
+            self.close()
+            pw.show()
 
 
-class AboutDialog(QtWidgets.QWidget):
+class Canvas(FigureCanvasQTAgg, FuncAnimation):
+    def __init__(self, parent, fig, animate=False, animation=None):
+        self.fig = fig
+        FigureCanvasQTAgg.__init__(self, self.fig)
+        if animate:
+            FuncAnimation.__init__(self, self.fig, animation[0], frames=animation[1], repeat_delay=animation[2])
+        self.setParent(parent)
+        FigureCanvasQTAgg.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        FigureCanvasQTAgg.updateGeometry(self)
+        self.draw()
 
+    def set_fig(self, fig):
+        self.fig = fig
+
+
+class AboutDialog(QWidget):
     def __init__(self):
         super().__init__()
-        self.title = 'About'
-        self.left = 10
-        self.top = 10
-        self.width = 320
-        self.height = 200
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
+        self.setWindowTitle("About")
         QtWidgets.QMessageBox.question(self, "About", "Team members:\n\n" + "Majd Taweel\t1161422\n" +
                                        "Ibrahim Mualla\t1160346\n" + "Yazan Yahya\t1162259\n",
                                        QtWidgets.QMessageBox.Ok)
+        self.setFixedSize(self.width(), self.height())
         self.show()
 
 

@@ -3,6 +3,7 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.figure import Figure
 from scipy.fftpack import *
 from scipy.io import wavfile
 
@@ -31,8 +32,9 @@ def filter_and_plot(key, track, x_percentage, t, pb):
         track.set_amplitudes(amps.sum(axis=1) / 2)
     t += 2
     pb.setValue(t)
+    figs = []
     fig = plt.figure()
-    plt.subplot(311)
+    figs.append(fig)
     sr = track.get_sample_rate()
     x = np.linspace(0, len(track.get_amplitudes()) // sr, num=len(track.get_amplitudes()))
     plt.plot(x, track.get_amplitudes())
@@ -42,11 +44,13 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     t += 5
     pb.setValue(t)
 
-    plt.subplot(312)
+    fig2 = plt.figure()
+    figs.append(fig2)
     ft = track.get_fourier_transform()
+    ax = fig2.add_subplot(111)
     length = len(ft)
     freq = fftshift(fftfreq(length, 1000 / track.get_sample_rate()))
-    plot, = plt.plot(freq, ft)
+    plot, = ax.plot(freq, ft)
     plt.xlabel("Frequency (kHz)")
     plt.ylabel("Amplitude")
     plt.title(key + "'s signal in frequency domain")
@@ -116,10 +120,11 @@ def filter_and_plot(key, track, x_percentage, t, pb):
         else:
             plot.set_ydata(ft)
 
-        return plot
+        return plot,
 
     new_signal[key] = ifft(ifftshift(lpf(ft, bandwidth)))
-    plt.subplot(313)
+    fig3 = plt.figure()
+    figs.append(fig3)
     plt.plot(x, new_signal[key])
     plt.xlabel("Time (s)")
     plt.ylabel("Amplitude")
@@ -131,9 +136,7 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     wavfile.write("./Filtered/" + key + " (Filtered).wav", sr, np.asarray(new_signal[key], dtype=np.int16))
     t += 15
     pb.setValue(t)
-    plt.show()
+
     # noinspection PyTypeChecker
-    return (filtered_total_energy / total_energy), freq[length // 2 + bandwidth], FuncAnimation(fig, update,
-                                                                                                frames=np.arange(
-                                                                                                    sum(temp) + 1),
-                                                                                                repeat_delay=1000)
+    return figs, filtered_total_energy / total_energy, freq[length // 2 + bandwidth], [update,
+                                                                                       np.arange(sum(temp) + 1), 1000]
