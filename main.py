@@ -3,33 +3,36 @@ import os
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.figure import Figure
 from scipy.fftpack import *
 from scipy.io import wavfile
 
 from AudioSignal import AudioSignal
 from AudioSignal import lpf
-from matplotlib.animation import FuncAnimation
 
 matplotlib.use("QT5Agg")
 new_signal = {}
 
 
-def display_filtered_spectrum(signal):
+def display_filtered_spectrum(signal, bandwidth):
     """
+    Return filtered signal and its figure
 
+    Parameters
+    ----------
     :type signal: AudioSignal
+    :type bandwidth: float
     """
-    plt.figure()
+    fig = plt.figure()
+    plt.xlabel("Frequency (kHz)")
+    plt.ylabel("Amplitude")
     signal_ft = signal.get_fourier_transform()
+    signal_ft = lpf(signal_ft, bandwidth * len(signal.get_amplitudes()) // signal.get_sample_rate())
     plt.plot(fftshift(fftfreq(len(signal_ft), 1000 / signal.get_sample_rate())), signal_ft)
-    plt.show()
+
+    return fig, signal_ft
 
 
 def filter_and_plot(key, track, x_percentage, t, pb):
-    amps = track.get_amplitudes()
-    if len(amps.shape) == 2:
-        track.set_amplitudes(amps.sum(axis=1) / 2)
     t += 2
     pb.setValue(t)
     figs = []
@@ -138,5 +141,4 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     pb.setValue(t)
 
     # noinspection PyTypeChecker
-    return figs, filtered_total_energy / total_energy, freq[length // 2 + bandwidth], [update,
-                                                                                       np.arange(sum(temp) + 1), 1000]
+    return figs, filtered_total_energy / total_energy, freq[length // 2 + bandwidth], [update, np.arange(sum(temp) + 1), 1000],

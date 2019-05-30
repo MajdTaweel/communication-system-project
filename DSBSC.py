@@ -19,38 +19,42 @@ class DSBSC(object):
         """
 
         length = signal.__len__()
-        carrier = np.cos(2 * np.pi * fc * np.arange(length) / signal.get_sample_rate())
-        modulated = carrier * signal
-        self.__modulated_signals[fc] = modulated
+        carrier = np.cos(2 * np.pi * fc * np.arange(0, length / signal.get_sample_rate(), 1 / signal.get_sample_rate()))
+        modulated = carrier * signal.get_amplitudes()
+        DSBSC.__modulated_signals[fc] = modulated
 
-        if len(self.__channel) < length:
-            self.__channel = np.zeros(length)
+        if len(DSBSC.__channel) < length:
+            DSBSC.__channel = np.zeros(length)
+        else:
+            DSBSC.__channel = np.zeros(len(DSBSC.__channel))
 
         sr = signal.get_sample_rate()
-        if self.__sample_rate != sr:
+        if DSBSC.__sample_rate != sr:
             import os
             if not os.path.isdir('./temp'):
                 os.mkdir('temp')
 
-            if self.__sample_rate < sr:
-                self.__sample_rate = sr
-                for fc in self.__modulated_signals:
+            if DSBSC.__sample_rate < sr:
+                DSBSC.__sample_rate = sr
+                for fc in DSBSC.__modulated_signals:
                     wavfile.write("./temp/" + str(fc) + ".wav", sr,
-                                  np.asarray(self.__modulated_signals[fc], dtype=np.int16))
-                    fs, self.__modulated_signals[fc] = wavfile.read("./temp/" + str(fc) + ".wav")
+                                  np.asarray(DSBSC.__modulated_signals[fc], dtype=np.int16))
+                    fs, DSBSC.__modulated_signals[fc] = wavfile.read("./temp/" + str(fc) + ".wav")
             else:
-                wavfile.write("./temp/" + str(fc) + ".wav", self.__sample_rate, np.asarray(modulated, dtype=np.int16))
-                fs, self.__modulated_signals[fc] = wavfile.read("./temp/" + str(fc) + ".wav")
+                wavfile.write("./temp/" + str(fc) + ".wav", DSBSC.__sample_rate, np.asarray(modulated, dtype=np.int16))
+                fs, DSBSC.__modulated_signals[fc] = wavfile.read("./temp/" + str(fc) + ".wav")
 
             import shutil
             shutil.rmtree("./temp")
 
-        for signal in self.__modulated_signals:
-            self.__channel += signal
+        for key in DSBSC.__modulated_signals:
+            for i in range(len(DSBSC.__modulated_signals[key])):
+                DSBSC.__channel[i] += DSBSC.__modulated_signals[key][i]
 
-        wavfile.write("FDMA.wav", self.__sample_rate, np.asarray(self.__channel, dtype=np.int16))
+        wavfile.write("FDMA.wav", DSBSC.__sample_rate, np.asarray(DSBSC.__channel, dtype=np.int16))
 
-    def demodulate(self, fc):
+    @staticmethod
+    def demodulate(fc):
         """
         Return a demodulated signal from the channel using the frequency of its carrier fc
 
@@ -59,9 +63,18 @@ class DSBSC(object):
         :type fc: float
         """
 
-        ft_channel = fftshift(fft(self.__channel))
-        bandwidth = len(self.__modulated_signals[fc]) / self.__sample_rate
-        filtered = ifftshift(ifft(bpf(ft_channel, fc, bandwidth)))
-        demodulated = fftshift(fft(filtered * np.cos(2 * np.pi * fc * np.arange(bandwidth) / self.__sample_rate)))
+        ft_channel = fftshift(fft(DSBSC.__channel))
+        bandwidth = len(DSBSC.__modulated_signals[fc]) / DSBSC.__sample_rate
+        filtered = ifft(ifftshift(bpf(ft_channel, fc, bandwidth)))
+        demodulated = fftshift(fft(filtered * np.cos(
+            2 * np.pi * fc * np.arange(0, len(DSBSC.__modulated_signals[fc]) - 1, 1 / DSBSC.__sample_rate))))
 
-        return ifftshift(ifft(lpf(demodulated, bandwidth)))
+        return ifft(ifftshift(lpf(demodulated, bandwidth)))
+
+    @staticmethod
+    def get_channel():
+        return DSBSC.__channel
+
+    @staticmethod
+    def get_sample_rate():
+        return DSBSC.__sample_rate

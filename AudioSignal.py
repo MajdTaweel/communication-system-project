@@ -8,7 +8,9 @@ class AudioSignal:
     def __init__(self, filename, sample_rate, amplitudes):
         self.__filename = filename
         self.__sample_rate = sample_rate
-        self.__amplitudes = amplitudes  # Add stereo track here
+        if len(amplitudes.shape) == 2:
+            amplitudes = (amplitudes.sum(axis=1) / 2)
+        self.__amplitudes = amplitudes
         AudioSignal.__count += 1
 
     def get_filename(self):
@@ -46,6 +48,7 @@ def lpf(signal, bandwidth):
     :type signal: array_like
     :type bandwidth: float
     """
+
     length = len(signal)
     low_pass = np.linspace(-length // 2, length // 2, num=length)
     low_pass = np.where(abs(low_pass) <= bandwidth, 1, 0)
@@ -63,6 +66,10 @@ def bpf(signal, frequency, bandwidth):
     :type frequency: float
     :type bandwidth: float
     """
+
+    if len(signal.shape) == 2:
+        signal = signal.sum(axis=1) / 2
+
     length = len(signal)
     band_pass = np.linspace(-length // 2, length // 2, num=length)
     band_pass = np.where(abs(band_pass) <= frequency + bandwidth or abs(band_pass) >= frequency - bandwidth, 1, 0)

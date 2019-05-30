@@ -7,10 +7,13 @@ from matplotlib.animation import FuncAnimation
 from scipy.io import wavfile
 
 from AudioSignal import AudioSignal
-from main import filter_and_plot
+from main import filter_and_plot, display_filtered_spectrum
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT
+from DSBSC import DSBSC
 import matplotlib
+import matplotlib.pyplot as plt
+from scipy.fftpack import *
 
 matplotlib.rc("figure", autolayout=True)
 audio_signals = {}
@@ -20,26 +23,56 @@ class MainWindow(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
-        self.centralwidget = QWidget(main_window)
-        self.verticalLayoutWidget = QWidget(self.centralwidget)
+
+        self.central_widget = QWidget(main_window)
+
+        self.top_h_widget = QWidget(self.central_widget)
+        self.top_h_box = QtWidgets.QHBoxLayout(self.top_h_widget)
+
+        self.verticalLayoutWidget = QWidget(self.top_h_widget)
         self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
-        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
-        self.pushButton.clicked.connect(self.plot_signal)
-        self.progress_bar = QtWidgets.QProgressBar(self.centralwidget)
-        self.horizontal_layout_widget = QWidget(self.centralwidget)
-        self.horizontal_layout = QtWidgets.QHBoxLayout(self.horizontal_layout_widget)
-        self.horizontal_layout.setContentsMargins(0, 0, 0, 0)
-        self.percentage_label = QtWidgets.QLabel(self.horizontal_layout_widget)
+        self.verticalLayout.setContentsMargins(0, 20, 0, 0)
+
+        self.progress_bar = QtWidgets.QProgressBar(self.central_widget)
+
+        self.vertical_layout_widget2 = QWidget(self.top_h_widget)
+        self.vertical_layout2 = QtWidgets.QVBoxLayout(self.vertical_layout_widget2)
+
+        self.percentage_h_widget = QWidget(self.vertical_layout_widget2)
+        self.percentage_h_box = QtWidgets.QHBoxLayout(self.percentage_h_widget)
+
+        self.percentage_label = QtWidgets.QLabel(self.percentage_h_widget)
         self.percentage_label.setText("X% (0 - 100):")
-        self.percentage_tf = QtWidgets.QLineEdit(self.horizontal_layout_widget)
+
+        self.percentage_tf = QtWidgets.QLineEdit(self.percentage_h_widget)
         self.percentage_tf.setFixedWidth(25)
+
         self.regex_validator = QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]{2}"), self.percentage_tf)
         self.percentage_tf.setValidator(self.regex_validator)
-        self.horizontal_layout.addWidget(self.percentage_label)
-        self.horizontal_layout.addWidget(self.percentage_tf)
+
+        self.percentage_h_box.addWidget(self.percentage_label)
+        self.percentage_h_box.addWidget(self.percentage_tf)
+
+        self.filter_button = QtWidgets.QPushButton(self.central_widget)
+        self.filter_button.clicked.connect(self.plot_signal)
+
+        self.vertical_layout2.addStretch()
+        self.vertical_layout2.addWidget(self.percentage_h_widget)
+        self.vertical_layout2.addStretch()
+        self.vertical_layout2.addWidget(self.filter_button)
+        self.vertical_layout2.addStretch()
+        self.vertical_layout_widget2.move(self.verticalLayoutWidget.width(), 0)
+
+        self.top_h_box.addStretch()
+        self.top_h_box.addWidget(self.verticalLayoutWidget)
+        self.top_h_box.addStretch()
+        self.top_h_box.addWidget(self.vertical_layout_widget2)
+        self.top_h_box.addStretch()
 
         width, height = 300, 155
+
+        self.top_h_widget.setFixedWidth(width)
+
         rect = QtCore.QRect(20, 20, 271, 16)
         y_coordinate = 70
 
@@ -47,27 +80,83 @@ class MainWindow(QWidget):
         i = 0
 
         for file in glob.glob('*.wav'):
-            sr, data = wavfile.read(file)
-            audio_signals[file[:-4]] = AudioSignal(file[:-4], sr, data)
-            self.radioButton.append(QtWidgets.QRadioButton(self.verticalLayoutWidget))
-            self.verticalLayout.addWidget(self.radioButton[i])
-            i += 1
-            rect.setHeight(rect.height() + 27)
-            height += 27
-            y_coordinate += 27
+            if file[:-4] != "FDMA":
+                sr, data = wavfile.read(file)
+                audio_signals[file[:-4]] = AudioSignal(file[:-4], sr, data)
+                self.radioButton.append(QtWidgets.QRadioButton(self.verticalLayoutWidget))
+                self.verticalLayout.addWidget(self.radioButton[i])
+                i += 1
 
+        self.radioButton[0].click()
         self.verticalLayoutWidget.setGeometry(rect)
-        main_window.resize(width, height)
-        self.pushButton.setGeometry(QtCore.QRect(210, y_coordinate, 75, 23))
-        self.horizontal_layout_widget.setGeometry(
-            QtCore.QRect(20, y_coordinate - 2, self.horizontal_layout_widget.width(),
-                         self.horizontal_layout_widget.height()))
-        self.progress_bar.setGeometry(QtCore.QRect(70, y_coordinate + 30, 180, 10))
+        self.percentage_h_widget.setGeometry(
+            QtCore.QRect(20, y_coordinate - 2, self.percentage_h_widget.width(),
+                         self.percentage_h_widget.height()))
+        self.progress_bar.setGeometry(QtCore.QRect(70, y_coordinate + 60, 180, 10))
+
+        self.bottom_v_widget = QWidget(self.central_widget)
+        self.bottom_v_box = QtWidgets.QVBoxLayout(self.bottom_v_widget)
+        self.bottom_v_widget.setFixedWidth(width)
+
+        self.horizontal_layout2_widget = QWidget(self.bottom_v_widget)
+        self.horizontal_layout2 = QtWidgets.QHBoxLayout(self.horizontal_layout2_widget)
+
+        self.send_button = QtWidgets.QPushButton(self.horizontal_layout2_widget)
+        self.send_button.setText("Transmit")
+        self.send_button.clicked.connect(self.transmit)
+
+        self.horizontal_layout3_widget = QWidget(self.bottom_v_widget)
+        self.horizontal_layout3 = QtWidgets.QHBoxLayout(self.horizontal_layout3_widget)
+
+        self.frequency_tf = QtWidgets.QLineEdit(self.horizontal_layout3_widget)
+        self.frequency_tf.setPlaceholderText("Frequency")
+
+        self.bandwidth_tf = QtWidgets.QLineEdit(self.horizontal_layout3_widget)
+        self.bandwidth_tf.setPlaceholderText("Bandwidth")
+
+        self.horizontal_layout3.addWidget(self.frequency_tf)
+        self.horizontal_layout3.addWidget(self.bandwidth_tf)
+
+        self.bottom_v_widget.move(0, height)
+
+        self.receive_button = QtWidgets.QPushButton(self.horizontal_layout2_widget)
+        self.receive_button.setText("Receive From Channel")
+        self.receive_button.setEnabled(False)
+        self.receive_button.clicked.connect(self.receive)
+
+        self.horizontal_layout2.addStretch()
+        self.horizontal_layout2.addWidget(self.send_button)
+        self.horizontal_layout2.addStretch()
+        self.horizontal_layout2.addWidget(self.receive_button)
+        self.horizontal_layout2.addStretch()
+
+        self.horizontal_layout2_widget.move(0, height)
+
+        self.channel_button = QtWidgets.QPushButton(self.bottom_v_widget)
+        self.channel_button.setText("Display Channel's Plot")
+        self.channel_button.clicked.connect(self.display_channel)
+
+        self.bottom_v_box.addWidget(self.horizontal_layout3_widget)
+        self.bottom_v_box.addStretch()
+        self.bottom_v_box.addWidget(self.horizontal_layout2_widget)
+        self.bottom_v_box.addStretch()
+        self.bottom_v_box.addWidget(self.channel_button)
+
+        self.regex_validator2 = QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]*"), self.frequency_tf)
+        self.frequency_tf.setValidator(self.regex_validator2)
+
+        self.regex_validator3 = QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]*"), self.bandwidth_tf)
+        self.bandwidth_tf.setValidator(self.regex_validator3)
+
+        height += self.bottom_v_widget.height() * 5
+
+        height += self.channel_button.height()
+
         main_window.setFixedSize(width, height)
         self.progress_bar.setVisible(False)
         self.timer = QtCore.QBasicTimer()
         self.step = 0
-        main_window.setCentralWidget(self.centralwidget)
+        main_window.setCentralWidget(self.central_widget)
         self.menubar = QtWidgets.QMenuBar(main_window)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 300, 21))
         self.menuFile = QtWidgets.QMenu(self.menubar)
@@ -86,6 +175,9 @@ class MainWindow(QWidget):
         self.translate_ui(main_window)
         QtCore.QMetaObject.connectSlotsByName(main_window)
         self.pw = None
+        self.channel = None
+        self.transmitted = {}
+        self.fpw = None
 
     def translate_ui(self, main_window):
         _translate = QtCore.QCoreApplication.translate
@@ -96,7 +188,7 @@ class MainWindow(QWidget):
             self.radioButton[i].setText(_translate("main_window", key))
             i += 1
 
-        self.pushButton.setText(_translate("main_window", "Filter and Plot"))
+        self.filter_button.setText(_translate("main_window", "Filter and Plot"))
         self.menuFile.setTitle(_translate("main_window", "File"))
         self.menuInfo.setTitle(_translate("main_window", "Info"))
         self.actionQuit.setText(_translate("main_window", "Quit"))
@@ -106,6 +198,37 @@ class MainWindow(QWidget):
         self.percentage_tf.setEnabled(False)
         self.step = 0
         self.timer.start(100, self)
+
+    def transmit(self):
+        if self.bandwidth_tf.text() != "" and self.frequency_tf.text() != "":
+            key = ""
+            for rb in self.radioButton:
+                if rb.isChecked():
+                    key = rb.text()
+                    break
+
+            fig, signal = display_filtered_spectrum(audio_signals[key], float(self.bandwidth_tf.text()))
+            if key not in self.transmitted:
+                signal = AudioSignal(key, audio_signals[key].get_sample_rate(), signal)
+                self.channel = DSBSC(float(self.frequency_tf.text()), signal)
+                self.transmitted[key] = float(self.bandwidth_tf.text())
+
+            self.fpw = FilteredPlotWindow(fig)
+            self.fpw.show()
+
+    def receive(self):
+        self.channel.demodulate()
+
+    def display_channel(self):
+        fig = plt.figure()
+        plt.xlabel("Frequency (kHz)")
+        plt.ylabel("Amplitude")
+        import numpy as np
+        x = np.linspace(0, len(self.channel.get_channel()) // self.channel.get_sample_rate(),
+                        num=len(self.channel.get_channel()))
+        plt.plot(x, self.channel.get_channel())
+        self.fpw = FilteredPlotWindow(fig)
+        self.fpw.show()
 
     def timerEvent(self, event):
         if self.step >= 100:
@@ -120,7 +243,7 @@ class MainWindow(QWidget):
                 if rb.isChecked():
                     key = rb.text()
                     break
-            if key != "" and self.percentage_tf.text() != "":
+            if self.percentage_tf.text() != "":
                 self.progress_bar.setVisible(True)
                 self.step += 1
                 self.progress_bar.setValue(self.step)
@@ -221,6 +344,20 @@ class PlotWindow(QWidget):
             pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=2)
             self.close()
             pw.show()
+
+
+class FilteredPlotWindow(QWidget):
+    def __init__(self, figure):
+        super().__init__()
+        self.setWindowTitle("Plot")
+
+        self.canvas = Canvas(self, figure)
+
+        nav = NavigationToolbar2QT(self.canvas, self)
+        nav.move(self.width() / 4, 0)
+        self.canvas.move(0, nav.sizeHint().height())
+
+        self.setFixedSize(self.width(), self.height() + nav.sizeHint().height())
 
 
 class Canvas(FigureCanvasQTAgg, FuncAnimation):
