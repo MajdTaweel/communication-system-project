@@ -80,9 +80,10 @@ class DSBSC(object):
         ft_channel = fft(DSBSC.__channel)
         bandwidth = len(DSBSC.__modulated_signals[fc].get_amplitudes()) / DSBSC.__sample_rate
         filtered = ifft(bpf(ft_channel, fc, bandwidth))
-        demodulated = fft(filtered * np.cos(
-            2 * np.pi * fc * np.arange(0, len(DSBSC.__modulated_signals[fc].get_amplitudes()) - 1,
-                                       1 / DSBSC.__sample_rate)))
+        demodulated = fft(filtered * np.cos(2 * np.pi * fc * np.arange(0, DSBSC.__modulated_signals[fc].__len__() /
+                                                                       DSBSC.__modulated_signals[fc].get_sample_rate(),
+                                                                       1 / DSBSC.__modulated_signals[
+                                                                           fc].get_sample_rate())))
 
         return ifft(lpf(demodulated, bandwidth))
 

@@ -75,6 +75,7 @@ def bpf(signal, frequency, bandwidth):
 
     length = len(signal)
     band_pass = np.linspace(-length // 2, length // 2, num=length)
-    band_pass = np.where(abs(band_pass) <= frequency + bandwidth or abs(band_pass) >= frequency - bandwidth, 1, 0)
+    band_pass = np.where(abs(band_pass) <= frequency + bandwidth / 2, 1,
+                         0)
 
     return signal * band_pass
