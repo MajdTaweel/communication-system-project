@@ -19,12 +19,11 @@ matplotlib.rc("figure", autolayout=True)
 audio_signals = {}
 
 
-class MainWindow(QWidget):
-    def __init__(self, main_window):
+class MainWindow(QtWidgets.QMainWindow):
+    def __init__(self):
         super().__init__()
-        self.main_window = main_window
 
-        self.central_widget = QWidget(main_window)
+        self.central_widget = QWidget(self)
 
         self.top_h_widget = QWidget(self.central_widget)
         self.top_h_box = QtWidgets.QHBoxLayout(self.top_h_widget)
@@ -152,36 +151,39 @@ class MainWindow(QWidget):
 
         height += self.channel_button.height()
 
-        main_window.setFixedSize(width, height)
+        self.setFixedSize(width, height)
         self.progress_bar.setVisible(False)
         self.timer = QtCore.QBasicTimer()
         self.step = 0
-        main_window.setCentralWidget(self.central_widget)
-        self.menubar = QtWidgets.QMenuBar(main_window)
+        self.setCentralWidget(self.central_widget)
+        self.menubar = QtWidgets.QMenuBar(self)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 300, 21))
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuInfo = QtWidgets.QMenu(self.menubar)
-        main_window.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(main_window)
-        main_window.setStatusBar(self.statusbar)
-        self.actionQuit = QtWidgets.QAction(main_window)
+        self.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(self)
+        self.setStatusBar(self.statusbar)
+        self.actionQuit = QtWidgets.QAction(self)
         self.actionQuit.triggered.connect(self.quit)
-        self.actionAbout = QtWidgets.QAction(main_window)
+        self.actionAbout = QtWidgets.QAction(self)
         self.actionAbout.triggered.connect(self.about)
         self.menuFile.addAction(self.actionQuit)
         self.menuInfo.addAction(self.actionAbout)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuInfo.menuAction())
-        self.translate_ui(main_window)
-        QtCore.QMetaObject.connectSlotsByName(main_window)
-        self.pw = None
-        self.channel = None
+        self.translate_ui()
+        QtCore.QMetaObject.connectSlotsByName(self)
+        self.pw = PlotWindow
+        self.channel = DSBSC
         self.transmitted = {}
-        self.fpw = None
+        self.fpw = FilteredPlotWindow
 
-    def translate_ui(self, main_window):
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        quit()
+
+    def translate_ui(self):
         _translate = QtCore.QCoreApplication.translate
-        main_window.setWindowTitle(_translate("main_window", "Communication Systems"))
+        self.setWindowTitle(_translate("main_window", "Communication Systems"))
 
         i = 0
         for key in audio_signals:
@@ -209,7 +211,7 @@ class MainWindow(QWidget):
 
             fig, signal = display_filtered_spectrum(audio_signals[key], float(self.bandwidth_tf.text()))
             if key not in self.transmitted:
-                signal = AudioSignal(key, audio_signals[key].get_sample_rate(), signal)
+                signal = AudioSignal(key, audio_signals[key].get_sample_rate(), ifft(ifftshift(signal)))
                 self.channel = DSBSC(float(self.frequency_tf.text()), signal)
                 self.transmitted[key] = float(self.bandwidth_tf.text())
 
@@ -220,15 +222,20 @@ class MainWindow(QWidget):
         self.channel.demodulate()
 
     def display_channel(self):
-        fig = plt.figure()
-        plt.xlabel("Frequency (kHz)")
-        plt.ylabel("Amplitude")
-        import numpy as np
-        x = np.linspace(0, len(self.channel.get_channel()) // self.channel.get_sample_rate(),
-                        num=len(self.channel.get_channel()))
-        plt.plot(x, self.channel.get_channel())
-        self.fpw = FilteredPlotWindow(fig)
-        self.fpw.show()
+        if self.channel.get_sample_rate() != 0:
+            fig = plt.figure()
+            plt.xlabel("Frequency (kHz)")
+            plt.ylabel("Amplitude")
+            import numpy as np
+            # x = np.linspace(0, len(self.channel.get_channel()) // self.channel.get_sample_rate(),
+            #                num=len(self.channel.get_channel()))
+            # plt.plot(x, self.channel.get_channel())
+
+            plt.plot(
+                fftshift(fftfreq(len(self.channel.get_channel()), 1000 / self.channel.get_sample_rate())),
+                fftshift(fft(self.channel.get_channel())))
+            self.fpw = FilteredPlotWindow(fig)
+            self.fpw.show()
 
     def timerEvent(self, event):
         if self.step >= 100:
@@ -258,10 +265,6 @@ class MainWindow(QWidget):
                 self.pw.show()
 
             self.percentage_tf.setEnabled(True)
-
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        super(MainWindow, self).closeEvent(a0)
-        quit()
 
     @staticmethod
     def quit():
@@ -306,7 +309,7 @@ class PlotWindow(QWidget):
         self.button_filtered.setText("Filtered Signal")
         self.button_filtered.clicked.connect(self.change_to_filtered)
 
-        self.label = QtWidgets.QLabel(str(percentage * 100) + "% Energy Bandwidth: " + str(bandwidth) + " kH", self)
+        self.label = QtWidgets.QLabel(str(percentage * 100) + "% Energy Bandwidth: " + str(bandwidth) + " kHz", self)
         self.label.move(0, self.height() + nav.sizeHint().height())
         self.label.setFixedSize(self.width(), self.label.height() + 20)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
@@ -388,7 +391,6 @@ class AboutDialog(QWidget):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    mw = QtWidgets.QMainWindow()
-    ui = MainWindow(mw)
-    mw.show()
+    ui = MainWindow()
+    ui.show()
     sys.exit(app.exec_())

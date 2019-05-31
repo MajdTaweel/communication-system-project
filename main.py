@@ -141,4 +141,5 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     pb.setValue(t)
 
     # noinspection PyTypeChecker
-    return figs, filtered_total_energy / total_energy, freq[length // 2 + bandwidth], [update, np.arange(sum(temp) + 1), 1000],
+    return figs, filtered_total_energy / total_energy, freq[length // 2 + bandwidth], [update, np.arange(sum(temp) + 1),
+                                                                                       5000]

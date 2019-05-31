@@ -19,6 +19,9 @@ class AudioSignal:
     def get_sample_rate(self):
         return self.__sample_rate
 
+    def set_sample_rate(self, sample_rate):
+        self.__sample_rate = sample_rate
+
     def get_amplitudes(self):
         return self.__amplitudes
 
