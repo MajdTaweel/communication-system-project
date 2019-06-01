@@ -44,19 +44,19 @@ class DSBSC(object):
         else:
             self.__modulating_signals[fc] = signal
 
+        length = len(self.__channel)
         for longest in self.__modulating_signals.values():
-            length = longest.__len__()
-            if len(self.__channel) < length:
-                self.__channel = np.zeros(length, dtype=np.complex128)
-            else:
-                self.__channel = np.zeros(len(self.__channel), dtype=np.complex128)
+            if length < longest.__len__():
+                length = longest.__len__()
+        self.__channel = np.zeros(length, dtype=np.complex128)
 
         for key in self.__modulating_signals:
             modulating = self.__modulating_signals[key]
             carrier = np.cos(
                 2.0 * np.pi * key * np.arange(self.__modulating_signals[key].__len__()) / self.__sample_rate)
             modulated = carrier * modulating.get_amplitudes()
-            self.__channel[:len(modulated)] += modulated
+            for i in range(len(modulated)):
+                self.__channel[i] += modulated[i]   # Addition is not working! Weird!!!
 
         wavfile.write("FDMA.wav", self.__sample_rate, np.asarray(self.__channel, dtype=np.int16))
 
