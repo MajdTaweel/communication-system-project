@@ -1,15 +1,12 @@
 import os
-
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+
 from scipy.fftpack import *
 from scipy.io import wavfile
-
 from AudioSignal import AudioSignal
 from AudioSignal import lpf
 
-matplotlib.use("QT5Agg")
 new_signal = {}
 
 
