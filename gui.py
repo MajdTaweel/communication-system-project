@@ -23,23 +23,33 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setFixedSize(600, 400)
-
         self.central_widget = QWidget(self)
 
         self.top_h_widget = QWidget(self.central_widget)
         self.top_h_box = QtWidgets.QHBoxLayout(self.top_h_widget)
 
-        self.verticalLayoutWidget = QWidget(self.top_h_widget)
-        self.verticalLayout = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
-        self.verticalLayout.setContentsMargins(0, 20, 0, 0)
+        self.lef_top_v_widget = QWidget(self.top_h_widget)
+        self.lef_top_v_box = QtWidgets.QVBoxLayout(self.lef_top_v_widget)
 
-        self.progress_bar = QtWidgets.QProgressBar(self.central_widget)
+        self.radioButton = []
+        i = 0
 
-        self.vertical_layout_widget2 = QWidget(self.top_h_widget)
-        self.vertical_layout2 = QtWidgets.QVBoxLayout(self.vertical_layout_widget2)
+        self.lef_top_v_box.addStretch()
+        for file in glob.glob('*.wav'):
+            if file[:-4] != "FDMA":
+                sr, data = wavfile.read(file)
+                audio_signals[file[:-4]] = AudioSignal(file[:-4], sr, data)
+                self.radioButton.append(QtWidgets.QRadioButton(self.lef_top_v_widget))
+                self.lef_top_v_box.addWidget(self.radioButton[i])
+                self.lef_top_v_box.addStretch()
+                i += 1
 
-        self.percentage_h_widget = QWidget(self.vertical_layout_widget2)
+        self.radioButton[0].click()
+
+        self.right_top_v_widget = QWidget(self.top_h_widget)
+        self.right_top_v_box = QtWidgets.QVBoxLayout(self.right_top_v_widget)
+
+        self.percentage_h_widget = QWidget(self.right_top_v_widget)
         self.percentage_h_box = QtWidgets.QHBoxLayout(self.percentage_h_widget)
 
         self.percentage_label = QtWidgets.QLabel(self.percentage_h_widget)
@@ -51,73 +61,69 @@ class MainWindow(QtWidgets.QMainWindow):
         self.regex_validator = QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]{2}"), self.percentage_tf)
         self.percentage_tf.setValidator(self.regex_validator)
 
+        self.percentage_h_box.addStretch()
         self.percentage_h_box.addWidget(self.percentage_label)
         self.percentage_h_box.addWidget(self.percentage_tf)
+        self.percentage_h_box.addStretch()
 
-        self.filter_button = QtWidgets.QPushButton(self.central_widget)
+        self.filter_h_widget = QWidget(self.right_top_v_widget)
+        self.filter_h_box = QtWidgets.QHBoxLayout(self.filter_h_widget)
+
+        self.filter_button = QtWidgets.QPushButton(self.filter_h_widget)
         self.filter_button.clicked.connect(self.plot_signal)
+        self.filter_button.setStyleSheet("padding: 20px;")
 
-        self.vertical_layout2.addStretch()
-        self.vertical_layout2.addWidget(self.percentage_h_widget)
-        self.vertical_layout2.addStretch()
-        self.vertical_layout2.addWidget(self.filter_button)
-        self.vertical_layout2.addStretch()
+        self.filter_h_box.addStretch()
+        self.filter_h_box.addWidget(self.filter_button)
+        self.filter_h_box.addStretch()
+
+        self.right_top_v_box.addStretch()
+        self.right_top_v_box.addWidget(self.percentage_h_widget)
+        self.right_top_v_box.addWidget(self.filter_h_widget)
+        self.right_top_v_box.addStretch()
 
         self.top_h_box.addStretch()
-        self.top_h_box.addWidget(self.verticalLayoutWidget)
+        self.top_h_box.addWidget(self.lef_top_v_widget)
+        self.top_h_box.addWidget(self.right_top_v_widget)
         self.top_h_box.addStretch()
-        self.top_h_box.addWidget(self.vertical_layout_widget2)
-        self.top_h_box.addStretch()
 
-        self.radioButton = []
-        i = 0
+        self.middle_v_widget = QWidget(self.central_widget)
+        self.middle_v_box = QtWidgets.QVBoxLayout(self.middle_v_widget)
 
-        self.verticalLayout.addStretch()
-        for file in glob.glob('*.wav'):
-            if file[:-4] != "FDMA":
-                sr, data = wavfile.read(file)
-                audio_signals[file[:-4]] = AudioSignal(file[:-4], sr, data)
-                self.radioButton.append(QtWidgets.QRadioButton(self.verticalLayoutWidget))
-                self.verticalLayout.addWidget(self.radioButton[i])
-                self.verticalLayout.addStretch()
-                i += 1
+        self.top_middle_h_widget = QWidget(self.middle_v_widget)
+        self.top_middle_h_box = QtWidgets.QHBoxLayout(self.top_middle_h_widget)
 
-        self.radioButton[0].click()
-
-        self.top_right_v_widget = QWidget(self.central_widget)
-        self.top_right_v_box = QtWidgets.QVBoxLayout(self.top_right_v_widget)
-
-        self.horizontal_layout2_widget = QWidget(self.top_right_v_widget)
-        self.horizontal_layout2 = QtWidgets.QHBoxLayout(self.horizontal_layout2_widget)
-
-        self.send_button = QtWidgets.QPushButton(self.horizontal_layout2_widget)
-        self.send_button.setText("Transmit")
-        self.send_button.clicked.connect(self.transmit)
-
-        self.horizontal_layout3_widget = QWidget(self.top_right_v_widget)
-        self.horizontal_layout3 = QtWidgets.QHBoxLayout(self.horizontal_layout3_widget)
-
-        self.frequency_tf = QtWidgets.QLineEdit(self.horizontal_layout3_widget)
+        self.frequency_tf = QtWidgets.QLineEdit(self.top_middle_h_widget)
         self.frequency_tf.setPlaceholderText("Frequency")
 
-        self.bandwidth_tf = QtWidgets.QLineEdit(self.horizontal_layout3_widget)
+        self.bandwidth_tf = QtWidgets.QLineEdit(self.top_middle_h_widget)
         self.bandwidth_tf.setPlaceholderText("Bandwidth")
 
-        self.horizontal_layout3.addWidget(self.frequency_tf)
-        self.horizontal_layout3.addWidget(self.bandwidth_tf)
+        self.top_middle_h_box.addStretch()
+        self.top_middle_h_box.addWidget(self.frequency_tf)
+        self.top_middle_h_box.addWidget(self.bandwidth_tf)
+        self.top_middle_h_box.addStretch()
 
-        self.horizontal_layout2.addStretch()
-        self.horizontal_layout2.addWidget(self.send_button)
-        self.horizontal_layout2.addStretch()
+        self.bottom_middle_h_widget = QWidget(self.middle_v_widget)
+        self.bottom_middle_h_box = QtWidgets.QHBoxLayout(self.bottom_middle_h_widget)
 
-        self.channel_button = QtWidgets.QPushButton(self.central_widget)
-        self.channel_button.setText("Display Channel's Plot")
-        self.channel_button.clicked.connect(self.display_channel)
+        self.transmit_button = QtWidgets.QPushButton("Transmit / Display Filtered Signal", self.bottom_middle_h_widget)
+        self.transmit_button.clicked.connect(self.transmit)
+        self.transmit_button.setStyleSheet("padding: 10px;")
 
-        self.top_right_v_box.addWidget(self.horizontal_layout3_widget)
-        self.top_right_v_box.addStretch()
-        self.top_right_v_box.addWidget(self.horizontal_layout2_widget)
-        self.top_right_v_box.addStretch()
+        self.reset_button = QtWidgets.QPushButton("Reset Channel", self.bottom_middle_h_widget)
+        self.reset_button.clicked.connect(self.reset_channel)
+        self.reset_button.setStyleSheet("padding: 10px;")
+
+        self.bottom_middle_h_box.addStretch()
+        self.bottom_middle_h_box.addWidget(self.transmit_button)
+        self.bottom_middle_h_box.addWidget(self.reset_button)
+        self.bottom_middle_h_box.addStretch()
+
+        self.middle_v_box.addStretch()
+        self.middle_v_box.addWidget(self.top_middle_h_widget)
+        self.middle_v_box.addWidget(self.bottom_middle_h_widget)
+        self.middle_v_box.addStretch()
 
         self.regex_validator2 = QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]*"), self.frequency_tf)
         self.frequency_tf.setValidator(self.regex_validator2)
@@ -125,9 +131,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.regex_validator3 = QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]*"), self.bandwidth_tf)
         self.bandwidth_tf.setValidator(self.regex_validator3)
 
-        self.progress_bar.setVisible(False)
-        self.timer = QtCore.QBasicTimer()
-        self.step = 0
         self.setCentralWidget(self.central_widget)
         self.menubar = QtWidgets.QMenuBar(self)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 300, 21))
@@ -137,7 +140,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self.statusbar)
 
-        self.progress_bar.setFixedWidth(200)
+        self.central_layout = QtWidgets.QVBoxLayout(self.central_widget)
 
         self.receive_h_widget = QWidget(self.central_widget)
         self.receive_h_box = QtWidgets.QHBoxLayout(self.receive_h_widget)
@@ -145,24 +148,41 @@ class MainWindow(QtWidgets.QMainWindow):
         self.transmission_frequencies = QtWidgets.QComboBox(self.receive_h_widget)
         self.transmission_frequencies.setFixedWidth(100)
 
-        self.receive_button = QtWidgets.QPushButton(self.central_widget)
-        self.receive_button.setText("Receive From Channel")
+        self.receive_button = QtWidgets.QPushButton("Receive From Channel", self.receive_h_widget)
         self.receive_button.setEnabled(False)
         self.receive_button.clicked.connect(self.receive)
+        self.receive_button.setStyleSheet("padding: 10px;")
 
-        self.receive_h_box.addWidget(self.transmission_frequencies)
         self.receive_h_box.addStretch()
+        self.receive_h_box.addWidget(self.transmission_frequencies)
         self.receive_h_box.addWidget(self.receive_button)
+        self.receive_h_box.addStretch()
 
-        self.top_h_widget.move(50, 20)
-        self.top_right_v_widget.move(280, 40)
-        self.receive_h_widget.move(185, 200)
+        self.progress_bar = QtWidgets.QProgressBar(self.central_widget)
+        self.progress_bar.setVisible(False)
+        self.timer = QtCore.QBasicTimer()
+        self.step = 0
+
         self.receive_h_box.setAlignment(QtCore.Qt.AlignHCenter)
-        self.channel_button.move((560 - self.channel_button.width()) // 2, 400 - (self.statusbar.height() + 115))
-        self.progress_bar.move(300 - self.progress_bar.width() // 2, 320)
         self.progress_bar.setAlignment(QtCore.Qt.AlignHCenter)
 
+        self.channel_h_widget = QWidget(self.central_widget)
+        self.channel_h_box = QtWidgets.QHBoxLayout(self.channel_h_widget)
+
+        self.channel_button = QtWidgets.QPushButton(self.central_widget)
+        self.channel_button.setText("Display Channel's Plot")
+        self.channel_button.clicked.connect(self.display_channel)
         self.channel_button.setStyleSheet("padding: 20px;")
+
+        self.channel_h_box.addStretch()
+        self.channel_h_box.addWidget(self.channel_button)
+        self.channel_h_box.addStretch()
+
+        self.central_layout.addWidget(self.top_h_widget)
+        self.central_layout.addWidget(self.middle_v_widget)
+        self.central_layout.addWidget(self.receive_h_widget)
+        self.central_layout.addWidget(self.channel_h_widget)
+        self.central_layout.addWidget(self.progress_bar)
 
         self.actionQuit = QtWidgets.QAction(self)
         self.actionQuit.triggered.connect(self.quit)
@@ -172,15 +192,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.menuInfo.addAction(self.actionAbout)
         self.menubar.addAction(self.menuFile.menuAction())
         self.menubar.addAction(self.menuInfo.menuAction())
+
         self.translate_ui()
         QtCore.QMetaObject.connectSlotsByName(self)
         self.pw = PlotWindow
-        self.channel = DSBSC
+        self.channel = DSBSC()
         self.transmitted = {}
         self.fpw = FilteredPlotWindow
-
-    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        quit()
 
     def translate_ui(self):
         _translate = QtCore.QCoreApplication.translate
@@ -213,7 +231,7 @@ class MainWindow(QtWidgets.QMainWindow):
             fig, signal = display_filtered_spectrum(audio_signals[key], float(self.bandwidth_tf.text()))
             if key not in self.transmitted:
                 signal = AudioSignal(key, audio_signals[key].get_sample_rate(), ifft(ifftshift(signal)))
-                self.channel = DSBSC(float(self.frequency_tf.text()), signal)
+                self.channel.modulate(float(self.frequency_tf.text()), signal, float(self.bandwidth_tf.text()))
                 self.transmitted[key] = float(self.frequency_tf.text())
                 self.transmission_frequencies.addItem(key)
                 if not self.receive_button.isEnabled():
@@ -223,17 +241,37 @@ class MainWindow(QtWidgets.QMainWindow):
             self.fpw.show()
 
     def receive(self):
-        demodulated = self.channel.demodulate(self.transmitted[self.transmission_frequencies.currentText()])
-        fig = plt.figure()
-        plt.plot(demodulated)
-        self.fpw = FilteredPlotWindow(fig)
+        signal_name = self.transmission_frequencies.currentText()
+        demodulated = self.channel.demodulate(self.transmitted[signal_name])
+        fig_time = plt.figure()
+        plt.xlabel("Time (seconds)")
+        plt.ylabel("Amplitude")
+        plt.title("Demodulated " + signal_name + " Signal in Time Domain")
+        import numpy as np
+        x = np.linspace(0, len(demodulated) // self.channel.get_sample_rate(), num=len(demodulated))
+        plt.plot(x, demodulated)
+
+        fig_frequency = plt.figure()
+        plt.xlabel("Frequency (kHz)")
+        plt.ylabel("Amplitude")
+        plt.title("Demodulated " + signal_name + " Signal in Frequency Domain")
+        plt.plot(
+            fftshift(fftfreq(len(demodulated), 1000 / self.channel.get_sample_rate())), fftshift(fft(demodulated)))
+
+        self.fpw = ChannelPlotWindow([fig_time, fig_frequency])
         self.fpw.show()
+        import os
+        if not os.path.isdir('./Demodulated'):
+            os.mkdir('Demodulated')
+        wavfile.write("Demodulated/" + signal_name + " (Demodulated).wav", self.channel.get_sample_rate(),
+                      np.asarray(demodulated, dtype=np.int16))
 
     def display_channel(self):
         if self.channel.get_sample_rate() != 0:
             fig_time = plt.figure()
             plt.xlabel("Time (seconds)")
             plt.ylabel("Amplitude")
+            plt.title("Channel in Time Domain")
             import numpy as np
             x = np.linspace(0, len(self.channel.get_channel()) // self.channel.get_sample_rate(),
                             num=len(self.channel.get_channel()))
@@ -242,11 +280,19 @@ class MainWindow(QtWidgets.QMainWindow):
             fig_frequency = plt.figure()
             plt.xlabel("Frequency (kHz)")
             plt.ylabel("Amplitude")
+            plt.title("Channel in Frequency Domain")
             plt.plot(
                 fftshift(fftfreq(len(self.channel.get_channel()), 1000 / self.channel.get_sample_rate())),
                 fftshift(fft(self.channel.get_channel())))
             self.fpw = ChannelPlotWindow([fig_time, fig_frequency])
             self.fpw.show()
+
+    def reset_channel(self):
+        while self.transmission_frequencies.currentText() != "":
+            self.transmission_frequencies.removeItem(0)
+        self.receive_button.setEnabled(False)
+        self.transmitted = {}
+        self.channel = DSBSC()
 
     def timerEvent(self, event):
         if self.step >= 100:
@@ -277,6 +323,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.percentage_tf.setEnabled(True)
 
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        quit()
+
     @staticmethod
     def quit():
         sys.exit()
@@ -297,67 +346,96 @@ class PlotWindow(QWidget):
         self.animation = animation
         self.fig_no = fig_no
 
+        self.left_v_widget = QWidget(self)
+        self.left_v_box = QtWidgets.QVBoxLayout(self.left_v_widget)
+        self.left_v_box.setContentsMargins(0, 0, 0, 0)
+
+        self.right_v_widget = QWidget(self)
+        self.right_v_box = QtWidgets.QVBoxLayout(self.right_v_widget)
+        self.right_v_box.setContentsMargins(4, 0, 10, 0)
+
         if fig_no == 1:
-            self.canvas = Canvas(self, figures[fig_no], True, animation)
+            self.canvas = Canvas(self.left_v_widget, figures[fig_no], True, animation)
         else:
-            self.canvas = Canvas(self, figures[fig_no])
-        nav = NavigationToolbar2QT(self.canvas, self)
-        nav.move(self.width() / 4, 0)
-        self.canvas.move(0, nav.sizeHint().height())
+            self.canvas = Canvas(self.left_v_widget, figures[fig_no])
+        self.nav = NavigationToolbar2QT(self.canvas, self.left_v_widget)
 
-        self.v_widget = QWidget(self)
-        self.v_box = QtWidgets.QVBoxLayout(self.v_widget)
-
-        self.button_time = QtWidgets.QPushButton(self.v_widget)
-        self.button_time.setText("Original Signal")
-        self.button_time.clicked.connect(self.change_to_original)
-
-        self.button_frequency = QtWidgets.QPushButton(self.v_widget)
-        self.button_frequency.setText("Signal's Energy")
-        self.button_frequency.clicked.connect(self.change_to_energy)
-
-        self.button_filtered = QtWidgets.QPushButton(self.v_widget)
-        self.button_filtered.setText("Filtered Signal")
-        self.button_filtered.clicked.connect(self.change_to_filtered)
-
-        self.label = QtWidgets.QLabel(str(percentage * 100) + "% Energy Bandwidth: " + str(bandwidth) + " kHz", self)
-        self.label.move(0, self.height() + nav.sizeHint().height())
-        self.label.setFixedSize(self.width(), self.label.height() + 20)
+        self.label = QtWidgets.QLabel(str(percentage * 100) + "% Energy Bandwidth: " + str(bandwidth) + " kHz",
+                                      self.left_v_widget)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setStyleSheet("QLabel {background-color: white; border-top-style: solid; border-top-width: 1px; "
                                  "border-top-color: black;}")
+        self.label.setMinimumHeight(100)
 
-        self.v_widget.move(self.width(), 0)
-        self.v_widget.setFixedHeight(self.height() + nav.sizeHint().height())
+        self.button_time = QtWidgets.QPushButton(self.right_v_widget)
+        self.button_time.setText("Original Signal")
+        self.button_time.clicked.connect(self.change_to_original)
 
-        self.v_box.addStretch()
-        self.v_box.addWidget(self.button_time)
-        self.v_box.addStretch()
-        self.v_box.addWidget(self.button_frequency)
-        self.v_box.addStretch()
-        self.v_box.addWidget(self.button_filtered)
-        self.v_box.addStretch()
+        self.button_frequency = QtWidgets.QPushButton(self.right_v_widget)
+        self.button_frequency.setText("Signal's Energy")
+        self.button_frequency.clicked.connect(self.change_to_energy)
 
-        self.setFixedSize(self.width() + self.v_widget.width(),
-                          self.height() + nav.sizeHint().height() + self.label.height())
+        self.button_filtered = QtWidgets.QPushButton(self.right_v_widget)
+        self.button_filtered.setText("Filtered Signal")
+        self.button_filtered.clicked.connect(self.change_to_filtered)
+
+        self.left_v_box.addWidget(self.nav)
+        self.left_v_box.addWidget(self.canvas)
+        self.left_v_box.addWidget(self.label)
+
+        self.right_v_box.addStretch()
+        self.right_v_box.addWidget(self.button_time)
+        self.right_v_box.addStretch()
+        self.right_v_box.addWidget(self.button_frequency)
+        self.right_v_box.addStretch()
+        self.right_v_box.addWidget(self.button_filtered)
+        self.right_v_box.addStretch()
+
+        self.layout = QtWidgets.QHBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.addWidget(self.left_v_widget)
+        self.layout.addWidget(self.right_v_widget)
+        self.setLayout(self.layout)
+        self.setMinimumSize(self.width(), self.height())
 
     def change_to_original(self):
         if self.fig_no != 0:
-            pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=0)
-            self.close()
-            pw.show()
+            self.fig_no = 0
+            self.canvas.setParent(None)
+            self.canvas.__init__(self.left_v_widget, self.figures[0])
+            self.nav.setParent(None)
+            self.nav.__init__(self.canvas, self.left_v_widget)
+            self.left_v_box.removeWidget(self.label)
+            self.left_v_box.addWidget(self.nav)
+            self.left_v_box.addWidget(self.canvas)
+            self.left_v_box.addWidget(self.label)
 
     def change_to_energy(self):
         if self.fig_no != 1:
-            pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=1)
-            self.close()
-            pw.show()
+            self.fig_no = 1
+            self.canvas.setParent(None)
+            self.canvas = Canvas(self.left_v_widget, self.figures[1], True, self.animation)
+            self.nav.setParent(None)
+            self.nav.__init__(self.canvas, self.left_v_widget)
+            self.left_v_box.removeWidget(self.label)
+            self.left_v_box.addWidget(self.nav)
+            self.left_v_box.addWidget(self.canvas)
+            self.left_v_box.addWidget(self.label)
 
     def change_to_filtered(self):
         if self.fig_no != 2:
-            pw = PlotWindow(self.figures, self.percentage, self.bandwidth, self.animation, fig_no=2)
-            self.close()
-            pw.show()
+            self.fig_no = 2
+            self.canvas.setParent(None)
+            self.canvas.__init__(self.left_v_widget, self.figures[2])
+            self.nav.setParent(None)
+            self.nav.__init__(self.canvas, self.left_v_widget)
+            self.left_v_box.removeWidget(self.label)
+            self.left_v_box.addWidget(self.nav)
+            self.left_v_box.addWidget(self.canvas)
+            self.left_v_box.addWidget(self.label)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        plt.close('all')
 
 
 class FilteredPlotWindow(QWidget):
@@ -366,12 +444,17 @@ class FilteredPlotWindow(QWidget):
         self.setWindowTitle("Plot")
 
         self.canvas = Canvas(self, figure)
+        self.nav = NavigationToolbar2QT(self.canvas, self)
 
-        nav = NavigationToolbar2QT(self.canvas, self)
-        nav.move(self.width() / 4, 0)
-        self.canvas.move(0, nav.sizeHint().height())
+        self.layout = QtWidgets.QVBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.addWidget(self.nav)
+        self.layout.addWidget(self.canvas)
+        self.setLayout(self.layout)
+        self.setMinimumSize(self.width(), self.height())
 
-        self.setFixedSize(self.width(), self.height() + nav.sizeHint().height())
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        plt.close('all')
 
 
 class ChannelPlotWindow(QWidget):
@@ -382,44 +465,63 @@ class ChannelPlotWindow(QWidget):
         self.figures = figures
         self.fig_no = fig_no
 
-        self.canvas = Canvas(self, figures[fig_no])
-        nav = NavigationToolbar2QT(self.canvas, self)
-        nav.move(self.width() / 4, 0)
-        self.canvas.move(0, nav.sizeHint().height())
+        self.left_v_widget = QWidget(self)
+        self.left_v_box = QtWidgets.QVBoxLayout(self.left_v_widget)
+        self.left_v_box.setContentsMargins(0, 0, 0, 0)
 
-        self.v_widget = QWidget(self)
-        self.v_box = QtWidgets.QVBoxLayout(self.v_widget)
+        self.right_v_widget = QWidget(self)
+        self.right_v_box = QtWidgets.QVBoxLayout(self.right_v_widget)
+        self.right_v_box.setContentsMargins(4, 0, 10, 0)
 
-        self.button_time = QtWidgets.QPushButton(self.v_widget)
-        self.button_time.setText("Original Signal")
+        self.canvas = Canvas(self.left_v_widget, figures[fig_no])
+        self.nav = NavigationToolbar2QT(self.canvas, self.left_v_widget)
+
+        self.left_v_box.addWidget(self.nav)
+        self.left_v_box.addWidget(self.canvas)
+
+        self.button_time = QtWidgets.QPushButton(self.right_v_widget)
+        self.button_time.setText("Time Domain")
         self.button_time.clicked.connect(self.change_to_time)
 
-        self.button_frequency = QtWidgets.QPushButton(self.v_widget)
-        self.button_frequency.setText("Signal's Energy")
+        self.button_frequency = QtWidgets.QPushButton(self.right_v_widget)
+        self.button_frequency.setText("Frequency Domain")
         self.button_frequency.clicked.connect(self.change_to_frequency)
 
-        self.v_widget.move(self.width(), 0)
-        self.v_widget.setFixedHeight(self.height() + nav.sizeHint().height())
+        self.right_v_box.addStretch()
+        self.right_v_box.addWidget(self.button_time)
+        self.right_v_box.addStretch()
+        self.right_v_box.addWidget(self.button_frequency)
+        self.right_v_box.addStretch()
 
-        self.v_box.addStretch()
-        self.v_box.addWidget(self.button_time)
-        self.v_box.addStretch()
-        self.v_box.addWidget(self.button_frequency)
-        self.v_box.addStretch()
-
-        self.setFixedSize(self.width() + self.v_widget.width(), self.height() + nav.sizeHint().height())
+        self.layout = QtWidgets.QHBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.addWidget(self.left_v_widget)
+        self.layout.addWidget(self.right_v_widget)
+        self.setLayout(self.layout)
+        self.setMinimumSize(self.width(), self.height())
 
     def change_to_time(self):
         if self.fig_no != 0:
-            pw = ChannelPlotWindow(self.figures, fig_no=0)
-            self.close()
-            pw.show()
+            self.fig_no = 0
+            self.canvas.setParent(None)
+            self.canvas.__init__(self.left_v_widget, self.figures[0])
+            self.nav.setParent(None)
+            self.nav.__init__(self.canvas, self.left_v_widget)
+            self.left_v_box.addWidget(self.nav)
+            self.left_v_box.addWidget(self.canvas)
 
     def change_to_frequency(self):
         if self.fig_no != 1:
-            pw = ChannelPlotWindow(self.figures, fig_no=1)
-            self.close()
-            pw.show()
+            self.fig_no = 1
+            self.canvas.setParent(None)
+            self.canvas.__init__(self.left_v_widget, self.figures[1])
+            self.nav.setParent(None)
+            self.nav.__init__(self.canvas, self.left_v_widget)
+            self.left_v_box.addWidget(self.nav)
+            self.left_v_box.addWidget(self.canvas)
+
+    def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        plt.close('all')
 
 
 class Canvas(FigureCanvasQTAgg, FuncAnimation):
@@ -430,11 +532,7 @@ class Canvas(FigureCanvasQTAgg, FuncAnimation):
             FuncAnimation.__init__(self, self.fig, animation[0], frames=animation[1], repeat_delay=animation[2])
         self.setParent(parent)
         FigureCanvasQTAgg.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        FigureCanvasQTAgg.updateGeometry(self)
         self.draw()
-
-    def set_fig(self, fig):
-        self.fig = fig
 
 
 class AboutDialog(QWidget):

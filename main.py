@@ -25,6 +25,7 @@ def display_filtered_spectrum(signal, bandwidth):
     fig = plt.figure()
     plt.xlabel("Frequency (kHz)")
     plt.ylabel("Amplitude")
+    plt.title("Filtered " + signal.get_filename() + " Signal in Frequency Domain")
     signal_ft = signal.get_fourier_transform()
     signal_ft = lpf(signal_ft, bandwidth * len(signal.get_amplitudes()) // signal.get_sample_rate())
     plt.plot(fftshift(fftfreq(len(signal_ft), 1000 / signal.get_sample_rate())), signal_ft)
@@ -41,9 +42,9 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     sr = track.get_sample_rate()
     x = np.linspace(0, len(track.get_amplitudes()) // sr, num=len(track.get_amplitudes()))
     plt.plot(x, track.get_amplitudes())
-    plt.xlabel("Time (s)")
+    plt.xlabel("Time (seconds)")
     plt.ylabel("Amplitude")
-    plt.title(key + "'s signal in time domain")
+    plt.title(key + " Signal in Time Domain")
     t += 5
     pb.setValue(t)
 
@@ -56,7 +57,7 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     plot, = ax.plot(freq, ft)
     plt.xlabel("Frequency (kHz)")
     plt.ylabel("Amplitude")
-    plt.title(key + "'s signal in frequency domain")
+    plt.title(key + " Signal in Frequency Domain")
     t += 5
     pb.setValue(t)
 
@@ -129,9 +130,9 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     fig3 = plt.figure()
     figs.append(fig3)
     plt.plot(x, new_signal[key])
-    plt.xlabel("Time (s)")
+    plt.xlabel("Time (seconds)")
     plt.ylabel("Amplitude")
-    plt.title("Filtered " + key + "'s signal in time domain")
+    plt.title("Filtered " + key + " Signal in Time Domain")
 
     if not os.path.isdir('./Filtered'):
         os.mkdir('Filtered')
@@ -140,6 +141,5 @@ def filter_and_plot(key, track, x_percentage, t, pb):
     t += 15
     pb.setValue(t)
 
-    # noinspection PyTypeChecker
     return figs, filtered_total_energy / total_energy, freq[length // 2 + bandwidth], [update, np.arange(sum(temp) + 1),
                                                                                        5000]

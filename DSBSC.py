@@ -1,96 +1,91 @@
 from AudioSignal import *
 from scipy.io import wavfile
 import numpy as np
+import librosa
 
 
 class DSBSC(object):
-    __modulating_signals = {}
-    __channel = np.zeros(0)
-    __sample_rate = 0
+    def __init__(self):
+        self.__modulating_signals = {}
+        self.bandwidths = {}
+        self.__channel = np.zeros(0, dtype=np.complex128)
+        self.__sample_rate = 0
 
-    def __init__(self, fc, signal):
+    def modulate(self, fc, signal, bandwidth):
         """
-        Modulates a message signal using AM DSB-SC and adds it to the channel
+        Modulates a message signal using AM DSB-SC FDMA
 
         Parameters
         ----------
         :type fc: float
         :type signal: AudioSignal
+        :type bandwidth: float
+        :return None
         """
 
+        self.bandwidths[fc] = bandwidth
         sr = signal.get_sample_rate()
-        if DSBSC.__sample_rate != sr:
-            import os
-            if not os.path.isdir('./temp'):
-                os.mkdir('temp')
+        if self.__sample_rate != sr:
+            if self.__sample_rate < sr:
+                self.__sample_rate = sr
+                for fc_temp in self.__modulating_signals:
+                    signal_temp, fs = librosa.load(self.__modulating_signals[fc_temp].get_filename() + ".wav", sr=sr)
+                    self.__modulating_signals[fc_temp].set_sample_rate(fs)
+                    self.__modulating_signals[fc_temp].set_amplitudes(signal_temp)
 
-            if DSBSC.__sample_rate < sr:
-                DSBSC.__sample_rate = sr
-                for fc_temp in DSBSC.__modulating_signals:
-                    wavfile.write("./temp/" + str(fc_temp) + ".wav", sr,
-                                  np.asarray(DSBSC.__modulating_signals[fc_temp].get_amplitudes(), dtype=np.int16))
-                    fs, signal_temp = wavfile.read("./temp/" + str(fc_temp) + ".wav")
-                    DSBSC.__modulating_signals[fc_temp].set_sample_rate(fs)
-                    DSBSC.__modulating_signals[fc_temp].set_amplitudes(signal_temp)
-
-                DSBSC.__modulating_signals[fc] = signal
+                self.__modulating_signals[fc] = signal
 
             else:
-                DSBSC.__modulating_signals[fc] = signal
-                wavfile.write("./temp/" + str(fc) + ".wav", DSBSC.__sample_rate,
-                              np.asarray(signal.get_amplitudes(), dtype=np.int16))
-                fs, signal_temp = wavfile.read("./temp/" + str(fc) + ".wav")
-                DSBSC.__modulating_signals[fc].set_sample_rate(fs)
-                DSBSC.__modulating_signals[fc].set_amplitudes(signal_temp)
-
-            import shutil
-            shutil.rmtree("./temp")
-
+                self.__modulating_signals[fc] = signal
+                signal_temp, fs = librosa.load(self.__modulating_signals[fc].get_filename() + ".wav",
+                                               sr=self.__sample_rate)
+                self.__modulating_signals[fc].set_sample_rate(fs)
+                self.__modulating_signals[fc].set_amplitudes(signal_temp)
         else:
-            DSBSC.__modulating_signals[fc] = signal
+            self.__modulating_signals[fc] = signal
 
-        length = DSBSC.__modulating_signals[fc].__len__()
+        for longest in self.__modulating_signals.values():
+            length = longest.__len__()
+            if len(self.__channel) < length:
+                self.__channel = np.zeros(length, dtype=np.complex128)
+            else:
+                self.__channel = np.zeros(len(self.__channel), dtype=np.complex128)
 
-        if len(DSBSC.__channel) < length:
-            DSBSC.__channel = np.zeros(length)
-        else:
-            DSBSC.__channel = np.zeros(len(DSBSC.__channel))
-
-        for key in DSBSC.__modulating_signals:
-            modulating = DSBSC.__modulating_signals[key]
+        for key in self.__modulating_signals:
+            modulating = self.__modulating_signals[key]
             carrier = np.cos(
-                2 * np.pi * key * np.arange(0, DSBSC.__modulating_signals[key].__len__() / modulating.get_sample_rate(),
-                                            1 / modulating.get_sample_rate()))
+                2.0 * np.pi * key * np.arange(self.__modulating_signals[key].__len__()) / self.__sample_rate)
             modulated = carrier * modulating.get_amplitudes()
-            for i in range(len(DSBSC.__modulating_signals[key])):
-                DSBSC.__channel[i] += modulated[i]
+            self.__channel[:len(modulated)] += modulated
 
-        wavfile.write("FDMA.wav", DSBSC.__sample_rate, np.asarray(DSBSC.__channel, dtype=np.int16))
+        wavfile.write("FDMA.wav", self.__sample_rate, np.asarray(self.__channel, dtype=np.int16))
 
-    @staticmethod
-    def demodulate(fc):
+    def demodulate(self, fc):
         """
         Return a demodulated signal from the channel using the frequency of its carrier fc
 
         Parameters
         ----------
         :type fc: float
+        :return np.core.ndarray
         """
 
-        ft_channel = fft(DSBSC.__channel)
-        bandwidth = len(DSBSC.__modulating_signals[fc].get_amplitudes()) / DSBSC.__sample_rate
-        filtered = ifft(bpf(ft_channel, fc, bandwidth))
-        demodulated = fft(filtered * np.cos(2 * np.pi * fc * np.arange(0, DSBSC.__modulating_signals[fc].__len__() /
-                                                                       DSBSC.__modulating_signals[fc].get_sample_rate(),
-                                                                       1 / DSBSC.__modulating_signals[
-                                                                           fc].get_sample_rate())))
+        ratio = self.__modulating_signals[fc].__len__() / self.__modulating_signals[fc].get_sample_rate()
+        ft_channel = fftshift(fft(self.__channel))
+        frequency = fc * ratio
+        bandwidth = self.bandwidths[fc] * ratio
+        filtered = ifft(ifftshift(bpf(ft_channel, frequency, bandwidth)))
+        demodulated = fftshift(fft(filtered * np.cos(
+            2.0 * np.pi * fc * np.arange(self.__modulating_signals[fc].__len__()) / self.__modulating_signals[
+                fc].get_sample_rate())))
 
-        return ifft(lpf(demodulated, bandwidth))
+        return ifft(ifftshift(lpf(demodulated, bandwidth)))
 
-    @staticmethod
-    def get_channel():
-        return DSBSC.__channel
+    def get_modulating_signals(self):
+        return self.__modulating_signals
 
-    @staticmethod
-    def get_sample_rate():
-        return DSBSC.__sample_rate
+    def get_channel(self):
+        return self.__channel
+
+    def get_sample_rate(self):
+        return self.__sample_rate

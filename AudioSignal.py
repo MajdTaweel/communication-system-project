@@ -48,7 +48,7 @@ def lpf(signal, bandwidth):
 
     Parameters
     ----------
-    :type signal: array_like
+    :type signal: np.core.ndarray
     :type bandwidth: float
     """
 
@@ -65,7 +65,7 @@ def bpf(signal, frequency, bandwidth):
 
     Parameters
     ----------
-    :type signal: array_like
+    :type signal: np.core.ndarray
     :type frequency: float
     :type bandwidth: float
     """
@@ -75,7 +75,8 @@ def bpf(signal, frequency, bandwidth):
 
     length = len(signal)
     band_pass = np.linspace(-length // 2, length // 2, num=length)
-    band_pass = np.where(abs(band_pass) <= frequency + bandwidth / 2, 1,
-                         0)
+    band_pass = np.where(abs(band_pass) <= frequency + bandwidth, 1, 0) - np.where(
+        abs(band_pass) < frequency - bandwidth, 1, 0)
+    print(band_pass)
 
     return signal * band_pass
