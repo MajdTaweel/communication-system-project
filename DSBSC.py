@@ -31,12 +31,18 @@ class DSBSC(object):
             self.__sample_rate = sr
             for fc_temp in self.__modulating_signals:
                 signal_temp, fs = librosa.load(self.__modulating_signals[fc_temp].get_filename() + ".wav", sr=sr)
-                carrier = np.cos(2.0 * np.pi * fc_temp * np.arange(len(signal_temp)) / sr)
-                modulated.append(carrier * signal_temp)
-                # if not os.path.isdir('./temp'):
-                #    os.mkdir('temp')
                 self.__modulating_signals[fc_temp].set_sample_rate(fs)
                 self.__modulating_signals[fc_temp].set_amplitudes(signal_temp)
+
+                ratio = self.__modulating_signals[fc_temp].__len__() / self.__modulating_signals[
+                    fc_temp].get_sample_rate()
+                bandwidth2 = self.__bandwidths[fc_temp] * ratio
+                filtered = ifft(ifftshift(lpf(fftshift(fft(signal_temp)), bandwidth2)))
+
+                carrier = np.cos(2.0 * np.pi * fc_temp * np.arange(len(filtered)) / sr)
+                modulated.append(carrier * filtered)
+                # if not os.path.isdir('./temp'):
+                #    os.mkdir('temp')
 
             write = np.asarray(modulated.pop(), dtype=np.float32)
             wavfile.write("FDMA.wav", sr, write)
@@ -56,8 +62,12 @@ class DSBSC(object):
                                            sr=self.__sample_rate)
             self.__modulating_signals[fc].set_sample_rate(fs)
             self.__modulating_signals[fc].set_amplitudes(signal_temp)
-            carrier = np.cos(2.0 * np.pi * fc * np.arange(len(signal_temp)) / sr)
-            temp = carrier * signal_temp
+
+            ratio = self.__modulating_signals[fc].__len__() / self.__modulating_signals[fc].get_sample_rate()
+            bandwidth2 = self.__bandwidths[fc] * ratio
+            filtered = ifft(ifftshift(lpf(fftshift(fft(signal_temp)), bandwidth2)))
+            carrier = np.cos(2.0 * np.pi * fc * np.arange(len(filtered)) / sr)
+            temp = carrier * filtered
             import os
             if os.path.isfile("FDMA.wav"):
                 fr, fdma = wavfile.read("FDMA.wav")
