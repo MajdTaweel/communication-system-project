@@ -264,7 +264,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not os.path.isdir('./Demodulated'):
             os.mkdir('Demodulated')
         wavfile.write("Demodulated/" + signal_name + " (Demodulated).wav", self.channel.get_sample_rate(),
-                      np.asarray(demodulated, dtype=np.int16))
+                      np.asarray(demodulated, dtype=np.float32))
 
     def display_channel(self):
         if self.channel.get_sample_rate() != 0:
@@ -324,6 +324,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.percentage_tf.setEnabled(True)
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        import os
+        if os.path.isfile("FDMA.wav"):
+            os.remove("FDMA.wav")
         quit()
 
     @staticmethod

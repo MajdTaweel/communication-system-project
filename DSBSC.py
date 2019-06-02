@@ -7,8 +7,8 @@ import librosa
 class DSBSC(object):
     def __init__(self):
         self.__modulating_signals = {}
-        self.bandwidths = {}
-        self.__channel = np.zeros(0, dtype=np.complex128)
+        self.__bandwidths = {}
+        self.__channel = np.zeros(0, dtype=np.float64)
         self.__sample_rate = 0
 
     def modulate(self, fc, signal, bandwidth):
@@ -23,42 +23,67 @@ class DSBSC(object):
         :return None
         """
 
-        self.bandwidths[fc] = bandwidth
+        self.__bandwidths[fc] = bandwidth
+        self.__modulating_signals[fc] = signal
         sr = signal.get_sample_rate()
-        if self.__sample_rate != sr:
-            if self.__sample_rate < sr:
-                self.__sample_rate = sr
-                for fc_temp in self.__modulating_signals:
-                    signal_temp, fs = librosa.load(self.__modulating_signals[fc_temp].get_filename() + ".wav", sr=sr)
-                    self.__modulating_signals[fc_temp].set_sample_rate(fs)
-                    self.__modulating_signals[fc_temp].set_amplitudes(signal_temp)
+        if self.__sample_rate < sr:
+            modulated = []
+            self.__sample_rate = sr
+            for fc_temp in self.__modulating_signals:
+                signal_temp, fs = librosa.load(self.__modulating_signals[fc_temp].get_filename() + ".wav", sr=sr)
+                carrier = np.cos(2.0 * np.pi * fc_temp * np.arange(len(signal_temp)) / sr)
+                modulated.append(carrier * signal_temp)
+                # if not os.path.isdir('./temp'):
+                #    os.mkdir('temp')
+                self.__modulating_signals[fc_temp].set_sample_rate(fs)
+                self.__modulating_signals[fc_temp].set_amplitudes(signal_temp)
 
-                self.__modulating_signals[fc] = signal
+            write = np.asarray(modulated.pop(), dtype=np.float32)
+            wavfile.write("FDMA.wav", sr, write)
 
-            else:
-                self.__modulating_signals[fc] = signal
-                signal_temp, fs = librosa.load(self.__modulating_signals[fc].get_filename() + ".wav",
-                                               sr=self.__sample_rate)
-                self.__modulating_signals[fc].set_sample_rate(fs)
-                self.__modulating_signals[fc].set_amplitudes(signal_temp)
+            while modulated.__len__() > 0:
+                fr, fdma = wavfile.read("FDMA.wav")
+                temp = modulated.pop()
+                if len(fdma) > len(temp):
+                    temp = np.append(temp, np.zeros(len(fdma) - len(temp)))
+                else:
+                    fdma = np.append(fdma, np.zeros(len(temp) - len(fdma)))
+                fdma = fdma.astype(np.float64) + temp.astype(np.float64)
+                wavfile.write("FDMA.wav", sr, fdma)
+
         else:
-            self.__modulating_signals[fc] = signal
+            signal_temp, fs = librosa.load(self.__modulating_signals[fc].get_filename() + ".wav",
+                                           sr=self.__sample_rate)
+            self.__modulating_signals[fc].set_sample_rate(fs)
+            self.__modulating_signals[fc].set_amplitudes(signal_temp)
+            carrier = np.cos(2.0 * np.pi * fc * np.arange(len(signal_temp)) / sr)
+            temp = carrier * signal_temp
+            import os
+            if os.path.isfile("FDMA.wav"):
+                fr, fdma = wavfile.read("FDMA.wav")
+                if len(fdma) > len(temp):
+                    temp = np.append(temp, np.zeros(len(fdma) - len(temp)))
+                else:
+                    fdma = np.append(fdma, np.zeros(len(temp) - len(fdma)))
+                fdma = fdma.astype(np.float64) + temp.astype(np.float64)
+                wavfile.write("FDMA.wav", sr, fdma)
+            else:
+                wavfile.write("FDMA.wav", sr, signal_temp)
 
-        length = len(self.__channel)
-        for longest in self.__modulating_signals.values():
-            if length < longest.__len__():
-                length = longest.__len__()
-        self.__channel = np.zeros(length, dtype=np.complex128)
+        fr, self.__channel = wavfile.read("FDMA.wav")
 
-        for key in self.__modulating_signals:
-            modulating = self.__modulating_signals[key]
-            carrier = np.cos(
-                2.0 * np.pi * key * np.arange(self.__modulating_signals[key].__len__()) / self.__sample_rate)
-            modulated = carrier * modulating.get_amplitudes()
-            for i in range(len(modulated)):
-                self.__channel[i] += modulated[i]   # Addition is not working! Weird!!!
+        """modulating = self.__modulating_signals[fc]
+        carrier = np.cos(
+            2.0 * np.pi * fc * np.arange(self.__modulating_signals[fc].__len__()) / self.__sample_rate)
+        modulated = carrier * modulating.get_amplitudes()
 
-        wavfile.write("FDMA.wav", self.__sample_rate, np.asarray(self.__channel, dtype=np.int16))
+        length = self.__modulating_signals[fc].__len__()
+        if len(self.__channel) < length:
+            self.__channel = np.append(self.__channel, np.zeros(length - len(self.__channel), dtype=np.float64))
+
+        self.__channel[:len(modulated)] += modulated  # issue
+
+        wavfile.write("FDMA.wav", self.__sample_rate, np.asarray(self.__channel, dtype=np.int16))"""
 
     def demodulate(self, fc):
         """
@@ -73,11 +98,10 @@ class DSBSC(object):
         ratio = self.__modulating_signals[fc].__len__() / self.__modulating_signals[fc].get_sample_rate()
         ft_channel = fftshift(fft(self.__channel))
         frequency = fc * ratio
-        bandwidth = self.bandwidths[fc] * ratio
+        bandwidth = self.__bandwidths[fc] * ratio
         filtered = ifft(ifftshift(bpf(ft_channel, frequency, bandwidth)))
         demodulated = fftshift(fft(filtered * np.cos(
-            2.0 * np.pi * fc * np.arange(self.__modulating_signals[fc].__len__()) / self.__modulating_signals[
-                fc].get_sample_rate())))
+            2.0 * np.pi * fc * np.arange(len(filtered)) / self.__modulating_signals[fc].get_sample_rate())))
 
         return ifft(ifftshift(lpf(demodulated, bandwidth)))
 

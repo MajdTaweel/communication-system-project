@@ -10,7 +10,7 @@ class AudioSignal:
         self.__sample_rate = sample_rate
         if len(amplitudes.shape) == 2:
             amplitudes = (amplitudes.sum(axis=1) / 2)
-        self.__amplitudes = amplitudes
+        self.__amplitudes = np.asarray(amplitudes, dtype=np.float64)
         AudioSignal.__count += 1
 
     def get_filename(self):
@@ -26,7 +26,9 @@ class AudioSignal:
         return self.__amplitudes
 
     def set_amplitudes(self, amplitudes):
-        self.__amplitudes = amplitudes
+        if len(amplitudes.shape) == 2:
+            amplitudes = (amplitudes.sum(axis=1) / 2)
+        self.__amplitudes = np.array(amplitudes, dtype=np.float64)
 
     def get_fourier_transform(self):
         return fftshift(fft(self.get_amplitudes()))
@@ -70,13 +72,9 @@ def bpf(signal, frequency, bandwidth):
     :type bandwidth: float
     """
 
-    if len(signal.shape) == 2:
-        signal = signal.sum(axis=1) / 2
-
     length = len(signal)
     band_pass = np.linspace(-length // 2, length // 2, num=length)
     band_pass = np.where(abs(band_pass) <= frequency + bandwidth, 1, 0) - np.where(
         abs(band_pass) < frequency - bandwidth, 1, 0)
-    print(band_pass)
 
     return signal * band_pass
